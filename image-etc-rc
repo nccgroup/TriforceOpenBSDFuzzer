@@ -1,0 +1,34 @@
+#
+# minimal initialization and then invoke fuzzer driver
+# never return / never invoke getty/login.
+#
+
+echo "running rc!"
+
+# setup filesystems
+# separated out so it can be invoked in single user mode easily
+#
+
+mountTar() {
+    nm=$1
+    sz=$2
+    /sbin/mount -o rw,noatime,nodev,nosuid,-s${sz} -t tmpfs swap /${nm}
+    tar xpf /flash/${nm}.tar -C /${nm}
+}
+
+/sbin/mount -o rw,nodev,nosuid,-s16M -t tmpfs swap /tmp
+mountTar root 16M
+mountTar var 64M
+
+export TERM=vt220
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+echo warm JIT cache
+/bin/driver -tv </root/ex1
+
+echo start testing
+/bin/driver -v
+#/bin/sh -i
+
+echo "exiting"
+/sbin/shutdown -p now

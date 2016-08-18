@@ -1,0 +1,91 @@
+diff -ur flashrd-2.0.clean/etc/rc.flashrd.sub flashrd-2.0/etc/rc.flashrd.sub
+--- flashrd-2.0.clean/etc/rc.flashrd.sub	Tue Feb  9 06:50:02 2016
++++ flashrd-2.0/etc/rc.flashrd.sub	Wed Jun 22 13:11:44 2016
+@@ -14,8 +14,8 @@
+ #
+ # Used in image creation and runtime:
+ #
+-vnddirs="root bin etc sbin usr"
+-set -A vndsize 50 auto auto auto auto	# min partition sizes in MBytes (or auto)
++vnddirs="bin sbin usr"
++set -A vndsize auto auto auto	# min partition sizes in MBytes (or auto)
+ #
+ # During image creation ONLY (flashrd process), vnddirs MUST match
+ # vnddirs setting in RAMDISK stand/rc file. (If you change it here
+@@ -30,8 +30,8 @@
+ # simply remove those partitions from vnddirs. (They will retain any
+ # rw/ro setting as defined by fstab.)
+ #
+-tardirs="var"
+-set -A tarsize 64M			# tmpfs sizes for tar dirs
++tardirs="root etc var"
++set -A tarsize 16M 16M 64M			# tmpfs sizes for tar dirs
+ #
+ # If you want to save all "tardirs" contents on shutdown:
+ # savetardirs="$tardirs"
+diff -ur flashrd-2.0.clean/mkkern flashrd-2.0/mkkern
+--- flashrd-2.0.clean/mkkern	Tue Feb  9 06:50:02 2016
++++ flashrd-2.0/mkkern	Mon Jul 11 23:23:58 2016
+@@ -96,6 +96,8 @@
+ 	option	MINIROOTSIZE=$blocks
+ 	config	bsd	root on rd0a swap on rd0b and wd0b and sd0b
+ 	pseudo-device	rd 1
++	makeoptions	DEBUG="-g"
++	makeoptions	COPTS=""
+ 	EOF
+ 
+ sed -e 's/GENERIC/FLASHRD/' $kernsrc/conf/GENERIC.MP > $kernsrc/conf/FLASHRD.MP
+@@ -149,6 +151,7 @@
+ echo -n " (make)"
+ c 0 "make ${ALTCC}-j$(($(sysctl -n hw.ncpu) + 1))> $TMPDIR/last.output 2>&1"
+ c 0 cp bsd $tmpmnt/bsd
++cp bsd.gdb $wd/bsd.gdb
+ echo
+ 
+ echo -n Compiling FLASHRD.MP kernel
+@@ -163,6 +166,13 @@
+ c 0 "make ${ALTCC}-j$(($(sysctl -n hw.ncpu) + 1))> $TMPDIR/last.output 2>&1"
+ c 0 cp bsd $tmpmnt/bsd.mp
+ echo
++
++# config serial console.  we cant run cfgflashrd with tar etc! -TimN
++test -d $tmpmnt/etc || mkdir $tmpmnt/etc
++cat > $tmpmnt/etc/boot.conf <<_EOF_
++stty com0 115200
++set tty com0
++_EOF_
+ 
+ ###
+ #
+diff -ur flashrd-2.0.clean/stand/rc flashrd-2.0/stand/rc
+--- flashrd-2.0.clean/stand/rc	Tue Feb  9 06:50:02 2016
++++ flashrd-2.0/stand/rc	Wed Jun 22 13:27:26 2016
+@@ -22,9 +22,9 @@
+ # this bootstrap could do quite a bit more to check vnd images for validity
+ #  and swap to /flash/old as necessary or convenient
+ #
+-vnddirs="root bin etc sbin usr" # vnd0a, vnd0d, vnd0e, vnd0f, vnd0g
++vnddirs="bin sbin usr" # vnd0a, vnd0d, vnd0e, vnd0f, vnd0g
+ set -A part a d e f g h i j k l m n o p
+-etctardirs="" # only etc is supported, others will be unmounted by /etc/rc
++etctardirs="etc" # only etc is supported, others will be unmounted by /etc/rc
+ etcsize=16M
+ vnd=vnd0
+ disk=auto
+@@ -61,7 +61,7 @@
+    NOSUID=
+   fi
+ 
+-  if ! mount -o noatime,nodev${NOSUID} /dev/$dev /$i; then
++  if ! mount -o noatime,rdonly,nodev${NOSUID} /dev/$dev /$i; then
+    fail=1
+   fi
+ 
+@@ -144,6 +144,7 @@
+ #
+ # mount base flash
+ 
++rdonly=",rdonly"
+ if ! fsck -p /dev/$disk; then
+  if ! fsck -y /dev/$disk; then
+   echo bootstrap: fsck $disk failed, attempting boot anyways with -o rdonly

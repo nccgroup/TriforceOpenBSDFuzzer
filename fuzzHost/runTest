@@ -1,0 +1,26 @@
+#!/bin/sh
+
+AFL=${TAFL:-../../TriforceAFL}
+IMG=flashimg.bin
+KERN=bsd.gdb
+
+getSym() {
+    name=$1
+    gdb -batch -ex "p/x &$name" $KERN |sed 's/^.*0x//g'
+}
+
+PANIC=`getSym Debugger`
+LOGSTORE=0   #XXX for now
+
+#test -d inputs || mkdir inputs
+#test -f inputs/ex1 || ./gen.py
+make testAfl || exit 1
+
+./testAfl $AFL/afl-qemu-system-trace \
+    -L $AFL/qemu_mode/qemu/pc-bios \
+    -m 64M -nographic -drive file=${IMG},if=scsi,readonly \
+    -aflPanicAddr "$PANIC" \
+    -aflDmesgAddr "$LOGSTORE" \
+    -aflFile @@ \
+    -- "$@"
+

@@ -1,0 +1,43 @@
+#!/bin/sh
+
+AFL=${TAFL:-../../TriforceAFL}
+IMG=flashimg.bin
+KERN=bsd.gdb
+
+# hokey arg parsing, sorry!
+if [ "x$1" = "x-C" ] ; then # continue
+    INP="-"
+    shift
+else
+    INP=inputs
+fi
+
+if [ "x$1" = "x-M" -o "x$1" = "x-S" ] ; then # master/slave args
+    FARGS="$1 $2"
+    shift; shift
+else
+    echo "specify -M n  or -S n  please"
+    exit 1
+fi
+
+getSym() {
+    name=$1
+    gdb -batch -ex "p/x &$name" $KERN |sed 's/^.*0x//g'
+}
+
+PANIC=`getSym panic`
+LOGSTORE=0   #XXX for now
+
+#test -d inputs || mkdir inputs
+#test -f inputs/ex1 || ./gen.py
+
+# run fuzzer and qemu-system
+export AFL_SKIP_CRASHES=1
+$AFL/afl-fuzz $FARGS -t 500+ -i $INP -o outputs -QQ -- \
+    $AFL/afl-qemu-system-trace \
+    -L $AFL/qemu_mode/qemu/pc-bios \
+    -m 64M -nographic -drive file=${IMG},if=scsi,readonly \
+    -aflPanicAddr "$PANIC" \
+    -aflDmesgAddr "$LOGSTORE" \
+    -aflFile @@
+

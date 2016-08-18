@@ -1,0 +1,7 @@
+getdents_panic
+kevent_panic
+mmap_panic
+mount_panic
+thrsigdivert_panic
+tmpfs_mknod_panic
+unmount_panic

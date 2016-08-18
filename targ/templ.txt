@@ -1,0 +1,224 @@
+OK 1 exit 0
+2 fork
+3 read fd buf sz
+4 write fd str sz
+5 open fn 0 0666
+6 close fd
+7 getentropy buf sz
+#
+# tfork would be problematic to test from our driver...
+# when child returns its executing on new stack, but C code
+# doesn't know this and thinks its on old stack!
+# but.. lets just let it go anyway....
+8 __tfork [str,str,str] 24
+9 link fn fn
+10 unlink fn
+OK 11 wait4 pid buf 0 buf
+12 chdir fn
+13 fchdir fd
+OK 14 mknod fn 0060666 0x102
+15 chmod fn 0666
+OK 16 chown fn 1 1
+# ASLR messes this one up, but with the right arg it works
+SKIP 17 break 0xc685c101380
+18 getdtablecount 
+19 getrusage 0 buf
+20 getpid
+# 21 mount - gen2
+OK 22 umount fn 0
+OK 23 setuid 1
+24 getuid
+25 geteuid
+# note: 9 = PT_ATTACH
+26 ptrace 9 pid str 0
+# 27 recvmsg - TODO: separate fuzzer?
+# 28 sendmsg - TODO: separate fuzzer?
+# 29 recvfrom - gen2
+# 30 accept - gen2
+# 31 getpeername - gen2
+# 32 getsockname - gen2
+33 access fn 4
+34 chflags fn 1
+35 fchflags fd 1
+36 sync
+OK 37 o58_kill pid 2
+38 stat fn buf
+39 getppid
+40 lstat fn buf
+41 dup fd
+42 fsatat fd fn buf 0
+43 getegid
+44 profil buf sz 0 1
+45 ktrace fn 0 1 pid
+# struct sigaction=[funcptr,mask,flags]
+46 sigaction 15 [0,1,1] buf
+47 getgid
+# 48 sigprocmask - gen2
+49 getlogin buf sz
+OK 50 setlogin "test"
+OK 51 acct {0;fn}
+52 sigpending buf
+53 fstat fd buf
+# 54 ioctl - TODO specialized fuzzer?
+OK 55 reboot 0
+OK 56 revoke fn
+57 symlink fn fn
+OK 58 readlink fn  buf sz
+OK 59 execve fn ["foo","bar"] ["FOO=1","BAR=2"]
+60 umask 0022
+OK 61 chroot fn
+62 getfsstat buf sz 0
+63 statfs fn buf
+64 fstatfs fd buf
+# 65 fhstatfs - gen2
+66 vfork
+67 gettimeofday buf buf
+OK 68 settimeofday [1600000000,0] 32[600,0]
+69 setitimer 0 [1,0,1,0]
+70 getitimer 0 buf
+# 71 select - gen2
+# 72 kevent - gen2
+73 munmap buf sz
+# 74 mprotect - gen2
+# 75 madvise - gen2
+76 utimes fn {0;[1600000000,0,1600000000,0]}
+77 futimes fd {0;[1600000000,0,1600000000,0]}
+# due to ASLR this one usually returns errors, but can work with right args.
+OK 78 mincore 0x2000 1 buf
+79 getgroups 10 buf
+OK 80 setgroups 3 [1,2,3]
+81 getpgrp
+82 setpgid pid pid
+83 sendsyslog str sz
+84 utimensat fd fn {0;[1600000000,0,1600000000,0]} 2
+85 futimens fd {0;[1600000000,0,1600000000,0]}
+# 86 kbind - SKIP, see "two security checks" in kbind(2) man page
+87 clock_gettime 0 buf
+OK 88 clock_settime 0 [1600000000,0]
+89 clock_getres 0 buf
+90 dup2 fd 4
+91 nanosleep [1,0] buf
+# 92 fcntl - gen2
+# 93 accept4 - gen2
+# this one blocks.  note: 1600000000 is 2020/09/13
+SKIP 94 __thrsleep str 0 [1600000000,0] str buf
+95 fsync fd
+96 setpriority 0 pid
+97 socket 1 1 0
+# 98 connect - gen2
+99 getdents fd buf sz
+100 getpriority 0 pid
+101 pipe2 buf 0
+102 dup3 fd 4 0
+# 103 sigreturn - gen2
+# 104 bind - gen2
+# 105 setsockopt - gen2
+106 listen fd 5
+107 chflagsat fd fn 1 2
+# 108 pledge
+# 109 ppoll - gen2
+# 110 pselect - gen2
+# 111 sigsuspend - gen2
+112 sendsyslog2 str sz 0
+# 118 getsockopt - gen2
+# 119 thrkill 
+120 readv fd [buf,sz,buf,sz] 2
+121 writev fd [str,sz,str,sz] 2
+OK 122 kill pid 2
+OK 123 fchown fd 1 1
+124 fchmod fd 0666
+OK 126 setreuid 1 2
+OK 127 setregid 1 2
+128 rename fn fn
+131 flock fd 1
+132 mkfifo fn 0666
+# 133 sendto - gen2
+134 shutdown fd 1
+135 socketpair 1 1 0 buf
+136 mkdir fn 0666
+OK 137 rmdir fn
+OK 140 adjtime [1,0] buf
+147 setsid
+# 148 quotactl - SKIP for now, UFS only anyway, and we're not using UFS
+# 155 nfssvc
+OK 161 getfh fn buf
+# note: 11=amd64_get_fsbase
+165 sysarch 11 str
+173 pread fd buf sz 123
+174 pwrite fd str sz 123
+OK 181 setgid 1
+OK 182 setegid 1
+OK 183 seteuid 1
+191 pathconf fn 1
+192 fpathconf fd 1
+# note: 3=SWAP_NSWAP
+193 swapctl 3 str 1
+194 getrlimit 0 buf
+195 setrlimit 0 [1000,1000]
+# note: mmap has padding before off_t
+197 mmap 0 4096 7 0 fd 0 0
+# 198 __syscall - skip
+# note: lseek has padding before off_t
+199 lseek fd 0 123 1
+200 truncate fn 123
+201 ftruncate fd 123
+# note: [1,6] = kern.maxproc
+# 202 sysctl - gen2
+# 203 mlock - gen2
+# 204 munlock - gen2
+207 getpgid pid
+209 utrace str str sz
+# 221 semget - gen2
+# 225 msgget
+# 226 msgsend
+# 227 msgrecv
+# 228 shmat
+# 230 shmdt
+# 250 minherit - gen2
+253 issetugid
+OK 254 lchown fn 1 2
+255 getsid pid
+# 256 msync - gen2
+263 pipe buf
+# 264 fhopen - gen2
+267 preadv fd [buf,sz,buf,sz] 2 123
+268 pwritev fd [str,sz,str,sz] 2 123
+269 kqueue
+271 mlockall 1
+272 munlockall
+281 getresuid buf buf buf
+OK 282 setresuid 1 2 3
+283 getresgid buf buf buf
+OK 284 setresgid 1 2 3
+286 mquery buf 4096 7 0 fd 0
+287 closefrom 2
+# 288 sigaltstack - gen2
+289 shmget 0 4096 01000
+# 290 semop - gen2
+# 294 fhstat - gen2
+# 295 __semctl - gen2
+# 296 shmctl
+# 297 msgctl
+298 sched_yield
+299 getthrid
+# 301 __thrwakeup
+OK 302 __threxit buf
+# 303 __thrsigdivert
+304 __getcwd buf sz
+305 adjfreq {0;[1]} {0;buf}
+310 setrtable 0
+311 getrtable
+313 faccessat fd fn 4 1
+314 fchmodat fd fn 0666 2
+OK 315 fchownat fd fn 1 2 2
+317 linkat fd fn fd fn 4
+318 mkdirat fd fn 0666
+319 mkfifoat fd fn 0666
+OK 320 mknodat fd fn 060666 0x102
+321 openat fd fn 0 0666
+OK 322 readlinkat fd fn buf sz
+323 renameat fd fn fd fn
+324 symlinkat fn fd fn
+325 unlinkat fd fn 0
+329 __set_tcb buf
+330 __gettcb 

@@ -1,0 +1,6 @@
+*.o
+testAfl
+inputs
+.fuzzdat
+*.bin
+bsd.gdb

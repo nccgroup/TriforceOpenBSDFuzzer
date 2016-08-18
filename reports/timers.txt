@@ -1,0 +1,93 @@
+We reported an issue in __thrsleep that leads to a panic, which can
+be used for a local DoS.  The fix is already in:
+http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/sys/kern/kern_synch.c.diff?r1=1.131&r2=1.132
+
+The issue is in the following code block, where to_ticks could overflow 
+and become negative, causing a panic:
+
+        long long to_ticks = 0;
+        ...
+        to_ticks = (long long)hz * tsp->tv_sec +
+            (tsp->tv_nsec + tick * 1000 - 1) / (tick * 1000) + 1;
+        if (to_ticks > INT_MAX)
+            to_ticks = INT_MAX;
+
+The fix addresses to this issue was to change the type of to_ticks to be 
+unsigned:
+
+        unsigned long long to_ticks = 0;
+
+
+However, this fix issue leaves some undefined behavior
+in the calculation, which means the C compiler may later break
+the code. Annoyingly, signed integer overflow is undefined behavior, and so
+the compiler can do whatever it wants after an overflow. 
+
+
+A fix here would be to error if tv_sec is negative,
+and then cast all values to an unsigned value in the multiplication, i.e.
+
+ to_ticks = ((unsigned long long)hz * (unsigned long)tsp->tv_sec) +
+            ((unsigned long)tsp->tv_nsec + (unsigned int)tick * 1000 - 1) / ((unsigned int)tick * 1000) + 1;
+
+In this particular case tv_sec is already implied to be positive
+because of an earlier check that it was in the future:
+
+        if (timespeccmp(tsp, &now, <)) {
+            /* already passed: still do the unlock */
+            if ((error = thrsleep_unlock(lock, lockflags)))
+                return (error);
+            return (EWOULDBLOCK);
+        }
+
+        timespecsub(tsp, &now, tsp);
+
+so the cast to unsigned should already be safe.
+
+We also noticed that this same pattern is replicated in
+several places.  We found there are code paths that can
+be abused through the __thrsigdivert system call in
+kern/kern_sig.c sys___thrsigdivert():
+
+            to_ticks = (long long)hz * ts.tv_sec +
+                ts.tv_nsec / (tick * 1000);
+            if (to_ticks > INT_MAX)
+                to_ticks = INT_MAX;
+
+here tv_sec is not guaranteed to be negative, and an
+explicit check would be needed before casting to unsigned.
+This issue can also be used to trigger the same panic
+and be abused as a local denial of service attack.
+
+There are also similar constructs in helper functions
+in kern/kern_timeout.c.  In timeout_add_tv:
+
+    long long to_ticks;
+
+    to_ticks = (long long)hz * tv->tv_sec + tv->tv_usec / tick;
+    if (to_ticks > INT_MAX)
+        to_ticks = INT_MAX;
+
+and in timeout_add_ts:
+
+    long long to_ticks;
+
+    to_ticks = (long long)hz * bt->sec + (long)(((uint64_t)1000000 *
+        (uint32_t)(bt->frac >> 32)) >> 32) / tick;
+    if (to_ticks > INT_MAX)
+        to_ticks = INT_MAX;
+
+
+The timeout_add_ts() function doesn't seem to be in use, but
+timeout_add_tv() is used in kern/uipc_socket.c by somove().
+Its possible this code path could be triggered by some socket
+operations, although we did not fully explore this.
+
+These other issues can be addressed in the same way.  The
+immediate issue can be addressed by using an unsigned value
+for to_ticks. The undefined C behavior of signed overflows
+can be addressed by first checking to see if a negative
+value was passed in, and erroring if appropriate, or saturating
+when an error isn't appropriate, and then handling the positive
+case by casting the all signed values to an unsigned values.
+

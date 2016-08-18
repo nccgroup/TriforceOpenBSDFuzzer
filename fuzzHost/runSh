@@ -1,0 +1,6 @@
+#!/bin/sh
+
+AFL=${TAFL:-../../TriforceAFL}
+
+$AFL/afl-qemu-system-trace -s -nographic -m 64M \
+    -drive file=flashimg-sh.bin,if=scsi,readonly
