@@ -3,7 +3,7 @@
 We added a "privmem" driver to QEMU to support booting from a
 normal disk image while maintaining isolation between test cases.
 To attach such a drive use the command line option
-`-drive driver=privmem,filename=disk.bin`.  This will read
+`-drive file=privmem:disk.bin`.  This will read
 the contents of `disk.bin` into memory and use it as a disk
 image.  Changes made to the drive will be made in memory but
 will not be persisted to disk.  Any changes made in a test
@@ -75,7 +75,7 @@ LOGSTORE=0   #XXX for now
 
 ./testAfl $AFL/afl-qemu-system-trace \
     -L $AFL/qemu_mode/qemu/pc-bios \
-    -m 64M -nographic -drive driver=privmem,filename=${IMG} \
+    -m 64M -nographic -drive format=raw,file=privmem:${IMG} \
     -aflPanicAddr "$PANIC" \
     -aflDmesgAddr "$LOGSTORE" \
     -aflFile @@ \
