@@ -1,6 +1,6 @@
 # TriforceOpenBSDSyscallFuzzer
 * 20160825
-* https://github.com/nccgroup/TriforceOpenBSDSyscallFuzzer
+* https://github.com/nccgroup/TriforceOpenBSDFuzzer
 * Jesse Hertz <jesse.hertz@nccgroup.trust>
 * Tim Newsham <tim.newsham@nccgroup.trust>
 
