@@ -48,7 +48,11 @@ export DISTDIR=~
 
 We now have the necessary dependencies installed, and can start building stuff.
 
-Enter the TriforceOpenBSDFuzzer directory. There are separate directories containing the OpenBSD files (`targ`) and 
+Clone the TriforceOpenBSDFuzzer repository
+```
+git clone https://github.com/nccgroup/TriforceOpenBSDFuzzer
+```
+and change into its directory. There are separate directories containing the OpenBSD files (`targ`) and 
 the fuzzer host files (`fuzzHost`).
 
 ## Building Driver and Inputs
