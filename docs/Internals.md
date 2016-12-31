@@ -18,7 +18,7 @@ point happens in a forked copy of the emulator.  It then calls
 `getWork` to get some work from AFL.
 Next it calls `startWork` to start tracing the driver while
 it parses the input data.
-Then it calls `startWork` again to sotp tracing the driver and
+Then it calls `startWork` again to stop tracing the driver and
 start tracing the kernel.
 Finally it performs the system calls indicated by the parsed
 call records before calling `doneWork` to notify AFL that the
