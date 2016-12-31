@@ -131,7 +131,7 @@ and unpack the inputs into the fuzzHost directory:
     cd TriforceOpenBSDFuzzer # this should now have the files we made on the BSD host in it
     cp flashimg* fuzzHost/
     cp bsd* fuzzHost/
-    cd fuzzhost
+    cd fuzzHost
     tar xzf ../inputs.tgz
 ```
 
