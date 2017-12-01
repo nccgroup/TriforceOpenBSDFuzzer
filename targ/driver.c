@@ -47,8 +47,7 @@ parseU16(char *p, unsigned short *x)
     char *endp;
 
     val = strtoul(p, &endp, 10);
-    if(endp == p || *endp != 0
-    || val < 0 || val >= 65536)
+    if(endp == p || *endp != 0 || val >= 65536)
         return -1;
     *x = val;
     return 0;
